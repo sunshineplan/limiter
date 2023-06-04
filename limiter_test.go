@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var limits = []int64{
+var limits = []Limit{
 	500 * 1024,  // 500KB
 	1024 * 1024, // 1MB
 }
@@ -32,14 +32,14 @@ func TestLimitRead(t *testing.T) {
 				t.Fatal(err)
 			}
 			if n != size {
-				t.Fatalf("%d/sec expect length %d; got %d", limit, size, n)
+				t.Fatalf("%.f/sec expect length %d; got %d", limit, size, n)
 			}
 			if !bytes.Equal(b, buf.Bytes()) {
 				t.Fatal("bytes not equal")
 			}
 			elapsed := int64(time.Since(start).Truncate(time.Second).Seconds())
-			if s := size/limit - 1; s != elapsed {
-				t.Fatalf("%d/sec %d expect elapsed time %ds; got %ds", limit, size, s, n)
+			if s := size/int64(limit) - 1; s != elapsed {
+				t.Fatalf("%.f/sec %d expect elapsed time %ds; got %ds", limit, size, s, n)
 			}
 		}
 	}
@@ -58,14 +58,14 @@ func TestLimitWrite(t *testing.T) {
 				t.Fatal(err)
 			}
 			if n != size {
-				t.Fatalf("%d/sec expect length %d; got %d", limit, size, n)
+				t.Fatalf("%.f/sec expect length %d; got %d", limit, size, n)
 			}
 			if !bytes.Equal(b, buf.Bytes()) {
 				t.Fatal("bytes not equal")
 			}
 			elapsed := int64(time.Since(start).Truncate(time.Second).Seconds())
-			if s := size/limit - 1; s != elapsed {
-				t.Fatalf("%d/sec %d expect elapsed time %ds; got %ds", limit, size, s, n)
+			if s := size/int64(limit) - 1; s != elapsed {
+				t.Fatalf("%.f/sec %d expect elapsed time %ds; got %ds", limit, size, s, n)
 			}
 		}
 	}

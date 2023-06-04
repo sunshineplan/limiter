@@ -5,9 +5,23 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/time/rate"
 )
+
+// Limit defines the maximum transfer speed of data.
+// The Limit is represented as a rate limit per second.
+// A zero Limit means no events are allowed.
+type Limit rate.Limit
+
+// Inf is the infinite rate limit; it allows all events (even if burst is zero).
+const Inf = Limit(rate.Inf)
+
+// Every converts a minimum time interval between events to a Limit.
+func Every(interval time.Duration) Limit {
+	return Limit(rate.Every(interval))
+}
 
 type Limiter struct {
 	mu         sync.Mutex
@@ -16,15 +30,21 @@ type Limiter struct {
 }
 
 // New creates a new Limiter with the given rate limit and buffer size.
-func New(limit int64, bufferSize int) *Limiter {
-	limiter := &Limiter{lim: rate.NewLimiter(rate.Limit(limit), int(limit))}
+func New(limit Limit, bufferSize int) *Limiter {
+	var b int
+	if limit == Inf {
+		b = 0
+	} else {
+		b = int(limit)
+	}
+	limiter := &Limiter{lim: rate.NewLimiter(rate.Limit(limit), b)}
 	limiter.bufferSize.Store(int64(bufferSize))
 	return limiter
 }
 
 // Limit returns the current rate limit.
-func (lim *Limiter) Limit() int64 {
-	return int64(lim.lim.Limit())
+func (lim *Limiter) Limit() Limit {
+	return Limit(lim.lim.Limit())
 }
 
 // Burst returns the current burst size.
@@ -38,7 +58,7 @@ func (lim *Limiter) BufferSize() int {
 }
 
 // SetLimit sets a new rate limit.
-func (lim *Limiter) SetLimit(newLimit int64) {
+func (lim *Limiter) SetLimit(newLimit Limit) {
 	lim.lim.SetLimit(rate.Limit(newLimit))
 }
 

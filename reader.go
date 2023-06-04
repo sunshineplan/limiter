@@ -14,7 +14,10 @@ type reader struct {
 }
 
 func (r *reader) Read(p []byte) (int, error) {
-	size, burst := r.BufferSize(), r.Burst()
+	if r.Limit() == Inf {
+		return r.r.Read(p)
+	}
+	burst, size := r.Burst(), r.BufferSize()
 	if (size == 0 && len(p) <= burst) || len(p) <= size {
 		n, err := r.r.Read(p)
 		if err := r.waitN(r.ctx, n); err != nil {

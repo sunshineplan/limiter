@@ -14,7 +14,10 @@ type writer struct {
 }
 
 func (w *writer) Write(p []byte) (int, error) {
-	size, burst := w.BufferSize(), w.Burst()
+	if w.Limit() == Inf {
+		return w.w.Write(p)
+	}
+	burst, size := w.Burst(), w.BufferSize()
 	if (size == 0 && len(p) <= burst) || len(p) <= size {
 		n, err := w.w.Write(p)
 		if err := w.waitN(w.ctx, n); err != nil {

@@ -14,23 +14,22 @@ type writer struct {
 }
 
 func (w *writer) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	if (w.BufferSize() == 0 && len(p) <= w.lim.Burst()) || len(p) <= w.BufferSize() {
+	size, burst := w.BufferSize(), w.Burst()
+	if (size == 0 && len(p) <= burst) || len(p) <= size {
 		n, err := w.w.Write(p)
 		if err := w.waitN(w.ctx, n); err != nil {
 			return n, err
 		}
 		return n, err
 	}
-	size := w.BufferSize()
 	if size == 0 {
 		size = 32 * 1024
 	}
-	if size > w.lim.Burst() {
-		size = w.lim.Burst()
+	if size > burst {
+		size = burst
 	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	var written int
 	for i := 0; i < len(p); i += size {
 		end := i + size

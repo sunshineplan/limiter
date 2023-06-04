@@ -53,7 +53,7 @@ func TestLimitWrite(t *testing.T) {
 			var buf bytes.Buffer
 			limiter := New(limit, 0)
 			start := time.Now()
-			n, err := io.Copy(limiter.Wrtier(&buf), bytes.NewReader(b))
+			n, err := io.Copy(limiter.Writer(&buf), bytes.NewReader(b))
 			if err != nil {
 				t.Fatal(err)
 			}

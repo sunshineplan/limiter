@@ -14,23 +14,22 @@ type reader struct {
 }
 
 func (r *reader) Read(p []byte) (int, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if (r.BufferSize() == 0 && len(p) <= r.lim.Burst()) || len(p) <= r.BufferSize() {
+	size, burst := r.BufferSize(), r.Burst()
+	if (size == 0 && len(p) <= burst) || len(p) <= size {
 		n, err := r.r.Read(p)
 		if err := r.waitN(r.ctx, n); err != nil {
 			return n, err
 		}
 		return n, err
 	}
-	size := r.BufferSize()
 	if size == 0 {
 		size = 32 * 1024
 	}
-	if size > r.lim.Burst() {
-		size = r.lim.Burst()
+	if size > burst {
+		size = burst
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	var read int
 	for i := 0; i < len(p); i += size {
 		end := i + size

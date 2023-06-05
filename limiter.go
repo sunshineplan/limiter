@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -12,37 +11,36 @@ import (
 
 // Limit defines the maximum transfer speed of data.
 // The Limit is represented as a rate limit per second.
-// A zero Limit means no events are allowed.
+// A zero Limit means no transfers are allowed.
 type Limit rate.Limit
 
-// Inf is the infinite rate limit; it allows all events (even if burst is zero).
+// Inf represents an infinite rate limit; it allows all transfers, even if the burst is zero.
 const Inf = Limit(rate.Inf)
 
-// Every converts a minimum time interval between events to a Limit.
+// Every converts the minimum time interval between transfers to a Limit.
 func Every(interval time.Duration) Limit {
 	return Limit(rate.Every(interval))
 }
 
+// A Limiter controls the speed at which transfers are allowed to happen.
+//
+// The zero value is a valid Limiter, but it will reject all transfers.
+// Use New to create non-zero Limiters.
 type Limiter struct {
-	mu         sync.Mutex
-	lim        *rate.Limiter
-	bufferSize atomic.Int64
+	mu  sync.Mutex
+	lim *rate.Limiter
 }
 
-// New creates a new Limiter with the given rate limit and buffer size.
-func New(limit Limit, bufferSize int) *Limiter {
+// New creates a new Limiter with the given transfer speed limit (bytes/sec).
+func New(limit Limit) *Limiter {
 	var b int
-	if limit == Inf {
-		b = 0
-	} else {
+	if limit != Inf {
 		b = int(limit)
 	}
-	limiter := &Limiter{lim: rate.NewLimiter(rate.Limit(limit), b)}
-	limiter.bufferSize.Store(int64(bufferSize))
-	return limiter
+	return &Limiter{lim: rate.NewLimiter(rate.Limit(limit), b)}
 }
 
-// Limit returns the current rate limit.
+// Limit returns the current limit.
 func (lim *Limiter) Limit() Limit {
 	return Limit(lim.lim.Limit())
 }
@@ -52,12 +50,7 @@ func (lim *Limiter) Burst() int {
 	return lim.lim.Burst()
 }
 
-// BufferSize returns the current buffer size.
-func (lim *Limiter) BufferSize() int {
-	return int(lim.bufferSize.Load())
-}
-
-// SetLimit sets a new rate limit.
+// SetLimit sets a new limit.
 func (lim *Limiter) SetLimit(newLimit Limit) {
 	lim.lim.SetLimit(rate.Limit(newLimit))
 }
@@ -67,32 +60,33 @@ func (lim *Limiter) SetBurst(newBurst int) {
 	lim.lim.SetBurst(newBurst)
 }
 
-// SetBufferSize sets a new buffer size.
-func (lim *Limiter) SetBufferSize(newBufferSize int) {
-	lim.bufferSize.Store(int64(newBufferSize))
-}
-
 // waitN waits for availability of n tokens.
 func (lim *Limiter) waitN(ctx context.Context, n int) error {
 	return lim.lim.WaitN(ctx, n)
 }
 
-// Writer returns a writer with rate limiting.
+// Writer returns a writer with limiting.
 func (lim *Limiter) Writer(w io.Writer) io.Writer {
 	return lim.WriterWithContext(context.Background(), w)
 }
 
-// WriterWithContext returns a writer with rate limiting and context.
+// WriterWithContext returns a writer with limiting and context.
 func (lim *Limiter) WriterWithContext(ctx context.Context, w io.Writer) io.Writer {
+	if lim.Limit() == Inf {
+		return w
+	}
 	return &writer{lim, w, ctx}
 }
 
-// Reader returns a reader with rate limiting.
+// Reader returns a reader with limiting.
 func (lim *Limiter) Reader(r io.Reader) io.Reader {
 	return lim.ReaderWithContext(context.Background(), r)
 }
 
-// ReaderWithContext returns a reader with rate limiting and context.
+// ReaderWithContext returns a reader with limiting and context.
 func (lim *Limiter) ReaderWithContext(ctx context.Context, r io.Reader) io.Reader {
+	if lim.Limit() == Inf {
+		return r
+	}
 	return &reader{lim, r, ctx}
 }

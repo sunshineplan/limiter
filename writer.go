@@ -17,25 +17,19 @@ func (w *writer) Write(p []byte) (int, error) {
 	if w.Limit() == Inf {
 		return w.w.Write(p)
 	}
-	burst, size := w.Burst(), w.BufferSize()
-	if (size == 0 && len(p) <= burst) || len(p) <= size {
+	burst := w.Burst()
+	if len(p) <= burst {
 		n, err := w.w.Write(p)
 		if err := w.waitN(w.ctx, n); err != nil {
 			return n, err
 		}
 		return n, err
 	}
-	if size == 0 {
-		size = 32 * 1024
-	}
-	if size > burst {
-		size = burst
-	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	var written int
-	for i := 0; i < len(p); i += size {
-		end := i + size
+	for i := 0; i < len(p); i += burst {
+		end := i + burst
 		if end > len(p) {
 			end = len(p)
 		}

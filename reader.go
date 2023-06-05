@@ -17,25 +17,19 @@ func (r *reader) Read(p []byte) (int, error) {
 	if r.Limit() == Inf {
 		return r.r.Read(p)
 	}
-	burst, size := r.Burst(), r.BufferSize()
-	if (size == 0 && len(p) <= burst) || len(p) <= size {
+	burst := r.Burst()
+	if len(p) <= burst {
 		n, err := r.r.Read(p)
 		if err := r.waitN(r.ctx, n); err != nil {
 			return n, err
 		}
 		return n, err
 	}
-	if size == 0 {
-		size = 32 * 1024
-	}
-	if size > burst {
-		size = burst
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var read int
-	for i := 0; i < len(p); i += size {
-		end := i + size
+	for i := 0; i < len(p); i += burst {
+		end := i + burst
 		if end > len(p) {
 			end = len(p)
 		}

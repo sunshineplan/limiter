@@ -25,7 +25,7 @@ func TestLimitRead(t *testing.T) {
 			b := make([]byte, size)
 			rand.Read(b)
 			var buf bytes.Buffer
-			limiter := New(limit, 0)
+			limiter := New(limit)
 			start := time.Now()
 			n, err := io.Copy(&buf, limiter.Reader(bytes.NewReader(b)))
 			if err != nil {
@@ -51,7 +51,7 @@ func TestLimitWrite(t *testing.T) {
 			b := make([]byte, size)
 			rand.Read(b)
 			var buf bytes.Buffer
-			limiter := New(limit, 0)
+			limiter := New(limit)
 			start := time.Now()
 			n, err := io.Copy(limiter.Writer(&buf), bytes.NewReader(b))
 			if err != nil {

@@ -2,4 +2,4 @@ module github.com/sunshineplan/limiter
 
 go 1.21.0
 
-require golang.org/x/time v0.7.0
+require golang.org/x/time v0.8.0
